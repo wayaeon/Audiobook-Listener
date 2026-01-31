@@ -291,6 +291,10 @@ FakesAssemblies/
 .ntvs_analysis.dat
 node_modules/
 
+# Next.js
+audibly-web/.next/
+audibly-web/.env.local
+
 # Visual Studio 6 build log
 *.plg
 

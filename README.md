@@ -117,14 +117,25 @@ This desktop audiobook player for Windows 10/11 supports playing .m4b and .mp3 f
 
 ### Built With
 
-[![WinUI 3][winui]][winui-url]
+- [.NET 8.0](https://dotnet.microsoft.com/download/dotnet/8.0) — Desktop app targets `net8.0-windows10.0.19041.0`; requires .NET 8.0 Desktop Runtime (v8.0.23 or compatible).
+- [![WinUI 3][winui]][winui-url]
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 
 
-<!-- TODO: GETTING STARTED -->
+## Getting Started
 
+### Prerequisites
+
+- **Desktop app (Windows):** [.NET 8.0 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/8.0) (v8.0.23 or compatible). Required to run the Audibly WinUI app.
+- **Web app:** Node.js 18+ and npm (see `audibly-web/` and `docs/SETUP-WEB-AND-API.md`).
+
+### Installation
+
+Install the desktop app from the [Microsoft Store](https://apps.microsoft.com/detail/9p6r1m1gg9jr?mode=direct), or build from source (see repo for build steps).
+
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 
 <!-- TODO: USAGE EXAMPLES -->
