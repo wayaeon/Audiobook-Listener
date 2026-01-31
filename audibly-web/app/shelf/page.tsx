@@ -1,47 +1,41 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { type AudiobookDto } from '@/lib/api';
 import { useCatalog } from '@/lib/catalogCache';
 import { useCoverUrls, PLACEHOLDER_COVER } from '@/lib/useCoverUrls';
+import { useAuth } from '@/lib/AuthContext';
+import { useOfflineIds } from '@/lib/OfflineIdsContext';
 import { displayTitle } from '@/lib/displayTitle';
-import { createClient } from '@/lib/supabase';
 import Link from 'next/link';
 
 export default function ShelfPage() {
   const { catalog: audiobooks, loading, error } = useCatalog();
-  const [filteredBooks, setFilteredBooks] = useState<AudiobookDto[]>([]);
+  const { accessToken } = useAuth();
+  const { offlineIds } = useOfflineIds();
   const [sortBy, setSortBy] = useState<'title' | 'author' | 'recent'>('recent');
-  const [accessToken, setAccessToken] = useState<string | null>(null);
-  const coverUrls = useCoverUrls(filteredBooks, accessToken);
 
-  useEffect(() => {
-    const supabase = createClient();
-    if (!supabase) return;
-    const apply = (token: string | null) => setAccessToken(token);
-    supabase.auth.getSession().then(({ data: { session } }) => apply(session?.access_token ?? null));
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => apply(session?.access_token ?? null));
-    return () => subscription.unsubscribe();
-  }, []);
+  const shelfBooks = useMemo(
+    () => audiobooks.filter((b) => offlineIds.has(b.id)),
+    [audiobooks, offlineIds]
+  );
 
-  // Sort books
-  useEffect(() => {
-    const sorted = [...audiobooks];
+  const filteredBooks = useMemo(() => {
+    const sorted = [...shelfBooks];
     sorted.sort((a, b) => {
-      if (sortBy === 'title') {
-        return a.title.localeCompare(b.title);
-      } else if (sortBy === 'author') {
-        return (a.author || '').localeCompare(b.author || '');
-      }
-      return 0; // 'recent' - keep original order
+      if (sortBy === 'title') return a.title.localeCompare(b.title);
+      if (sortBy === 'author') return (a.author || '').localeCompare(b.author || '');
+      return 0;
     });
-    setFilteredBooks(sorted);
-  }, [audiobooks, sortBy]);
+    return sorted;
+  }, [shelfBooks, sortBy]);
+
+  const coverUrls = useCoverUrls(filteredBooks, accessToken);
 
   return (
     <main className="page-with-nav" style={{ padding: 'var(--page-padding)' }}>
       {/* Sort Bar */}
-      {!loading && !error && audiobooks.length > 0 && (
+      {!loading && !error && shelfBooks.length > 0 && (
         <div style={{ 
           marginBottom: 'var(--section-gap)',
           display: 'flex',
@@ -98,13 +92,27 @@ export default function ShelfPage() {
         </div>
       )}
 
-      {!loading && !error && audiobooks.length === 0 && (
+      {!loading && !error && shelfBooks.length === 0 && (
         <div style={{ textAlign: 'center', padding: '3rem' }}>
           <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>📚</div>
-          <h2 style={{ color: 'var(--text)', marginBottom: '0.5rem' }}>Shelf is empty</h2>
-          <p style={{ color: 'var(--text-secondary)' }}>
-            Upload m4b files to your R2 bucket to see them here
+          <h2 style={{ color: 'var(--text)', marginBottom: '0.5rem' }}>Your shelf is empty</h2>
+          <p style={{ color: 'var(--text-secondary)', marginBottom: '1rem' }}>
+            Download audiobooks from the Library to add them here
           </p>
+          <Link
+            href="/library"
+            style={{
+              display: 'inline-block',
+              padding: '10px 20px',
+              background: 'var(--accent)',
+              color: 'white',
+              borderRadius: 8,
+              textDecoration: 'none',
+              fontWeight: 600,
+            }}
+          >
+            Go to Library
+          </Link>
         </div>
       )}
 

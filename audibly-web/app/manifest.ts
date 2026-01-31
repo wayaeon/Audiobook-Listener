@@ -2,8 +2,8 @@ import type { MetadataRoute } from 'next';
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: 'Audibly — Audiobook Player',
-    short_name: 'Audibly',
+    name: 'Libera — Audiobook Library',
+    short_name: 'Libera',
     description: 'Listen to audiobooks from your library, offline or online.',
     start_url: '/',
     display: 'standalone',

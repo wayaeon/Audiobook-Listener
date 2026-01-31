@@ -2,12 +2,19 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useCatalog } from '@/lib/catalogCache';
 
 export function BottomNav() {
   const pathname = usePathname();
-  
-  // Don't show bottom nav on player page
-  if (pathname?.startsWith('/play/')) {
+  const { needsAuth } = useCatalog();
+
+  // Hide nav on pages outside the inner app
+  const isOuterPage =
+    pathname === '/login' ||
+    pathname === '/onboarding' ||
+    pathname?.startsWith('/play/') ||
+    (needsAuth && pathname === '/');
+  if (isOuterPage) {
     return null;
   }
 

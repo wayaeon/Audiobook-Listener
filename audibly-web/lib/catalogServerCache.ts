@@ -1,6 +1,6 @@
 import type { AudiobookEntry } from './catalog';
 
-const TTL_MS = 2 * 60 * 1000; // 2 minutes
+const TTL_MS = 5 * 60 * 1000; // 5 minutes
 
 let cached: { entries: AudiobookEntry[]; ts: number } | null = null;
 

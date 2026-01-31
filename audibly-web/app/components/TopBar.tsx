@@ -7,7 +7,7 @@ import { displayTitle } from '@/lib/displayTitle';
 
 export function TopBar() {
   const pathname = usePathname();
-  const { catalog: audiobooks, loading } = useCatalog();
+  const { catalog: audiobooks, loading, needsAuth } = useCatalog();
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const router = useRouter();
@@ -27,10 +27,17 @@ export function TopBar() {
 
   const handleResultClick = (bookId: string) => {
     handleSearchOpen(false);
-    router.push(`/play/${encodeURIComponent(bookId)}`);
+    router.push(`/audiobook/${encodeURIComponent(bookId)}`);
   };
 
-  if (pathname?.startsWith('/play/') || pathname === '/login') {
+  // Hide on pages outside the inner app (login, onboarding, landing, player) or profile
+  const isOuterPage =
+    pathname === '/login' ||
+    pathname === '/onboarding' ||
+    pathname === '/profile' ||
+    pathname?.startsWith('/play/') ||
+    (needsAuth && pathname === '/');
+  if (isOuterPage) {
     return null;
   }
 

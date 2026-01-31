@@ -2,12 +2,18 @@ import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { OfflineBanner } from './OfflineBanner';
 import { SupabaseGuard } from './SupabaseGuard';
+import { OnboardingGuard } from './OnboardingGuard';
 import { BottomNav } from './components/BottomNav';
 import { TopBar } from './components/TopBar';
+import { MiniPlayer } from './components/MiniPlayer';
+import { MainWithMiniPlayerSpacer } from './components/MainWithMiniPlayerSpacer';
 import { CatalogProvider } from '@/lib/catalogCache';
+import { PlayerProvider } from '@/lib/PlayerContext';
+import { AuthProvider } from '@/lib/AuthContext';
+import { OfflineIdsProvider } from '@/lib/OfflineIdsContext';
 
 export const metadata: Metadata = {
-  title: 'Audibly — Audiobook Player',
+  title: 'Libera — Audiobook Library',
   description: 'Listen to audiobooks from your library, offline or online.',
   manifest: '/manifest.webmanifest',
   icons: { icon: '/favicon.svg' },
@@ -32,12 +38,23 @@ export default function RootLayout({
       <body>
         <OfflineBanner />
         <SupabaseGuard>
-          <CatalogProvider>
-            <TopBar />
-            {children}
-          </CatalogProvider>
+          <AuthProvider>
+            <CatalogProvider>
+              <OfflineIdsProvider>
+                <PlayerProvider>
+                <OnboardingGuard>
+                  <MainWithMiniPlayerSpacer>
+                    <TopBar />
+                    {children}
+                  </MainWithMiniPlayerSpacer>
+                </OnboardingGuard>
+                <MiniPlayer />
+                <BottomNav />
+                </PlayerProvider>
+              </OfflineIdsProvider>
+            </CatalogProvider>
+          </AuthProvider>
         </SupabaseGuard>
-        <BottomNav />
       </body>
     </html>
   );

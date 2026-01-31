@@ -27,7 +27,7 @@ export async function GET(request: Request) {
     }));
     return NextResponse.json(dtos, {
       headers: {
-        'Cache-Control': 'private, max-age=60, stale-while-revalidate=300',
+        'Cache-Control': 'private, max-age=300, stale-while-revalidate=900',
       },
     });
   } catch (err) {

@@ -1,145 +1,185 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { createClient } from '@/lib/supabase';
-import { getStreamUrls, fetchStreamAsBlob, type AudiobookDto } from '@/lib/api';
-import { saveOfflineBlob, hasOfflineAudiobook } from '@/lib/offline';
+import { useMemo, useState } from 'react';
 import { useCatalog } from '@/lib/catalogCache';
 import { useCoverUrls, PLACEHOLDER_COVER } from '@/lib/useCoverUrls';
+import { useAuth } from '@/lib/AuthContext';
 import { displayTitle } from '@/lib/displayTitle';
 import Link from 'next/link';
 
+type SortOption = 'title' | 'author' | 'duration' | 'recent';
+
+function formatDuration(seconds: number): string {
+  if (!seconds) return '—';
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  if (h >= 1) return `${h}h ${m}m`;
+  return `${m}m`;
+}
+
 export default function LibraryPage() {
   const { catalog: audiobooks, loading, error } = useCatalog();
-  const [offlineIds, setOfflineIds] = useState<Set<string>>(new Set());
-  const [downloadingId, setDownloadingId] = useState<string | null>(null);
-  const [accessToken, setAccessToken] = useState<string | null>(null);
-  const coverUrls = useCoverUrls(audiobooks, accessToken);
+  const { accessToken } = useAuth();
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sortBy, setSortBy] = useState<SortOption>('recent');
 
-  useEffect(() => {
-    const supabase = createClient();
-    if (!supabase) return;
-    const apply = (token: string | null) => setAccessToken(token);
-    supabase.auth.getSession().then(({ data: { session } }) => apply(session?.access_token ?? null));
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => apply(session?.access_token ?? null));
-    return () => subscription.unsubscribe();
-  }, []);
+  const filteredAndSorted = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    let list = q
+      ? audiobooks.filter(
+          (b) =>
+            (b.title || '').toLowerCase().includes(q) ||
+            (b.author || '').toLowerCase().includes(q)
+        )
+      : [...audiobooks];
 
-  useEffect(() => {
-    const supabase = createClient();
-    if (!supabase || !audiobooks.length) return;
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      if (session?.user?.id) {
-        for (const book of audiobooks) {
-          const ok = await hasOfflineAudiobook(session.user.id, book.id, book.sourceFileCount);
-          if (ok) setOfflineIds((prev) => new Set(prev).add(book.id));
-        }
+    list.sort((a, b) => {
+      switch (sortBy) {
+        case 'title':
+          return (a.title || '').localeCompare(b.title || '');
+        case 'author':
+          return (a.author || '').localeCompare(b.author || '');
+        case 'duration':
+          return (b.duration || 0) - (a.duration || 0);
+        default:
+          return 0;
       }
     });
-  }, [audiobooks]);
+    return list;
+  }, [audiobooks, searchQuery, sortBy]);
 
-  async function handleDownload(book: AudiobookDto) {
-    const supabase = createClient();
-    if (!supabase) return;
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session?.access_token || !session.user?.id) return;
-    setDownloadingId(book.id);
-    try {
-      const urls = await getStreamUrls(book.id, session.access_token);
-      for (let i = 0; i < urls.length; i++) {
-        const blob = await fetchStreamAsBlob(urls[i].url);
-        await saveOfflineBlob(session.user.id, book.id, i, blob);
-      }
-      setOfflineIds((prev) => new Set(prev).add(book.id));
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setDownloadingId(null);
-    }
-  }
+  const coverUrls = useCoverUrls(filteredAndSorted, accessToken);
 
   return (
-    <main className="page-with-nav" style={{ padding: 'var(--page-padding)' }}>
+    <main className="page-with-nav library-page">
       {!loading && !error && audiobooks.length > 0 && (
-        <header className="page-header">
-          <h1 className="page-title">Library</h1>
-        </header>
+        <>
+          <header className="library-page-header">
+            <h1 className="page-title">Library</h1>
+            <p className="library-page-subtitle">{audiobooks.length} audiobooks</p>
+          </header>
+
+          <div className="library-filters">
+            <div className="library-search-wrap">
+              <SearchIcon />
+              <input
+                type="search"
+                placeholder="Search by title or author..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="library-search-input"
+                aria-label="Search library"
+              />
+            </div>
+            <div className="library-sort-wrap">
+              <label htmlFor="library-sort" className="library-sort-label">
+                Sort
+              </label>
+              <select
+                id="library-sort"
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as SortOption)}
+                className="library-sort-select"
+              >
+                <option value="recent">Recent</option>
+                <option value="title">Title A–Z</option>
+                <option value="author">Author A–Z</option>
+                <option value="duration">Longest first</option>
+              </select>
+            </div>
+          </div>
+        </>
       )}
 
       {loading && (
-        <div className="library-loading" style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)' }}>
+        <div className="library-loading">
           Loading library…
         </div>
       )}
-      
+
       {error && (
-        <div style={{ textAlign: 'center', padding: '3rem', color: '#ef4444' }}>
+        <div className="library-error">
           {error}
         </div>
       )}
-      
+
       {!loading && !error && audiobooks.length > 0 && (
-        <div className="card-grid">
-          {audiobooks.map((book) => (
-            <div key={book.id} className="book-card-wrapper">
-              <Link
-                href={`/play/${encodeURIComponent(book.id)}`}
-                style={{ textDecoration: 'none' }}
-              >
-                <div className="book-card">
-                  <div className="book-card-cover">
-                    {coverUrls[book.id] !== undefined ? (
-                      <img
-                        src={coverUrls[book.id] ?? PLACEHOLDER_COVER}
-                        alt=""
-                        loading="lazy"
-                        decoding="async"
-                        className="book-card-cover-img book-card-cover-img-loaded"
-                      />
-                    ) : (
-                      <div className="book-card-cover-skeleton" aria-hidden />
-                    )}
-                    <div className="book-card-play-overlay" aria-hidden>
-                      <span className="book-card-play-icon">
-                        <PlayIcon />
-                      </span>
-                    </div>
-                  </div>
-                  <div className="book-card-info">
-                    <div className="book-card-title">{displayTitle(book.title)}</div>
-                    {book.author && <div className="book-card-author">{book.author}</div>}
-                  </div>
-                </div>
-              </Link>
+        <>
+          {filteredAndSorted.length === 0 ? (
+            <div className="library-empty-search">
+              <p>No results for &ldquo;{searchQuery}&rdquo;</p>
               <button
                 type="button"
-                onClick={(e) => { e.preventDefault(); handleDownload(book); }}
-                disabled={downloadingId === book.id || offlineIds.has(book.id)}
-                className={`book-card-download ${offlineIds.has(book.id) ? 'downloaded' : ''}`}
+                onClick={() => setSearchQuery('')}
+                className="library-clear-search"
               >
-                {downloadingId === book.id ? (
-                  <>Downloading…</>
-                ) : offlineIds.has(book.id) ? (
-                  <>✓ Downloaded</>
-                ) : (
-                  <>Download</>
-                )}
+                Clear search
               </button>
             </div>
-          ))}
-        </div>
+          ) : (
+            <div className="card-grid card-grid-library">
+              {filteredAndSorted.map((book) => (
+                <Link
+                  key={book.id}
+                  href={`/audiobook/${encodeURIComponent(book.id)}`}
+                  className="book-card-wrapper library-book-card"
+                >
+                  <div className="book-card">
+                    <div className="book-card-cover">
+                      {coverUrls[book.id] !== undefined ? (
+                        <img
+                          src={coverUrls[book.id] ?? PLACEHOLDER_COVER}
+                          alt=""
+                          loading="lazy"
+                          decoding="async"
+                          className="book-card-cover-img book-card-cover-img-loaded"
+                        />
+                      ) : (
+                        <div className="book-card-cover-skeleton" aria-hidden />
+                      )}
+                      <div className="book-card-play-overlay" aria-hidden>
+                        <span className="book-card-play-icon">
+                          <PlayIcon />
+                        </span>
+                      </div>
+                    </div>
+                    <div className="book-card-info library-book-info">
+                      <div className="book-card-title library-book-title">
+                        {displayTitle(book.title)}
+                      </div>
+                      <div className="book-card-author library-book-author">
+                        {book.author || 'Unknown'}
+                      </div>
+                      {book.duration > 0 && (
+                        <div className="library-book-duration">
+                          {formatDuration(book.duration)}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          )}
+        </>
       )}
-      
+
       {!loading && !error && audiobooks.length === 0 && (
-        <div style={{ textAlign: 'center', padding: '3rem' }}>
-          <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>📚</div>
-          <h2 style={{ color: 'var(--text)', marginBottom: '0.5rem' }}>No audiobooks yet</h2>
-          <p style={{ color: 'var(--text-secondary)' }}>
-            Add m4b files to your R2 bucket to get started
-          </p>
+        <div className="library-empty">
+          <div className="library-empty-icon">📚</div>
+          <h2>No audiobooks yet</h2>
+          <p>Add m4b files to your R2 bucket to get started</p>
         </div>
       )}
     </main>
+  );
+}
+
+function SearchIcon() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" width="18" height="18">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+    </svg>
   );
 }
 
