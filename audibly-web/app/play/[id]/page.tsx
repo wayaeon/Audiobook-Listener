@@ -62,7 +62,7 @@ export default function PlayPage() {
     return (
       <main className="player-page">
         <p className="player-error">{player.error}</p>
-        <Link href="/library" className="player-back">
+        <Link href="/browse" className="player-back">
           <IconBack /> <span>Library</span>
         </Link>
       </main>
@@ -93,7 +93,7 @@ export default function PlayPage() {
       <div className="player-backdrop" />
       <div className="player-overlay" />
       <div className="player-content">
-        <Link href="/library" className="player-back" aria-label="Back to Library">
+        <Link href="/browse" className="player-back" aria-label="Back to Browse">
           <IconBack />
         </Link>
         <div className="player-cover-wrap">

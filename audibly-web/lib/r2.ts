@@ -75,7 +75,7 @@ function getClient(): S3Client | null {
   });
 }
 
-export type R2Object = { key: string; size: number };
+export type R2Object = { key: string; size: number; lastModified?: Date };
 
 export async function listAudiobookKeys(): Promise<R2Object[]> {
   const all = await listAllKeys();
@@ -98,7 +98,11 @@ export async function listAllKeys(): Promise<R2Object[]> {
     });
     const result = await client.send(cmd);
     for (const obj of result.Contents ?? []) {
-      if (obj.Key) keys.push({ key: obj.Key, size: obj.Size ?? 0 });
+      if (obj.Key) keys.push({
+        key: obj.Key,
+        size: obj.Size ?? 0,
+        lastModified: obj.LastModified ? new Date(obj.LastModified) : undefined,
+      });
     }
     continuationToken = result.NextContinuationToken;
   } while (continuationToken);
@@ -213,7 +217,7 @@ export async function getObjectAsText(key: string, signal?: AbortSignal): Promis
   return buf ? buf.toString('utf-8') : null;
 }
 
-/** List keys with a given prefix (e.g. folder/). */
+/** List keys with a given prefix (e.g. folder/ or audiobooks/Author - Book/). */
 export async function listKeysWithPrefix(keyPrefix: string): Promise<string[]> {
   const client = getClient();
   if (!client) return [];
@@ -225,7 +229,7 @@ export async function listKeysWithPrefix(keyPrefix: string): Promise<string[]> {
       Bucket: bucket,
       Prefix: keyPrefix,
       ContinuationToken: continuationToken,
-      MaxKeys: 100,
+      MaxKeys: 1000,
     });
     const result = await client.send(cmd);
     for (const obj of result.Contents ?? []) {

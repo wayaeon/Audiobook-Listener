@@ -42,6 +42,7 @@ function saveCache(userId: string, ids: Set<string>) {
 type OfflineIdsContextValue = {
   offlineIds: Set<string>;
   addOfflineId: (id: string) => void;
+  removeOfflineId: (id: string) => void;
 };
 
 const OfflineIdsContext = createContext<OfflineIdsContextValue | null>(null);
@@ -100,7 +101,16 @@ export function OfflineIdsProvider({ children }: { children: ReactNode }) {
     });
   }, [userId]);
 
-  const value: OfflineIdsContextValue = { offlineIds, addOfflineId };
+  const removeOfflineId = useCallback((id: string) => {
+    setOfflineIds((prev) => {
+      const next = new Set(prev);
+      next.delete(id);
+      if (userId) saveCache(userId, next);
+      return next;
+    });
+  }, [userId]);
+
+  const value: OfflineIdsContextValue = { offlineIds, addOfflineId, removeOfflineId };
 
   return (
     <OfflineIdsContext.Provider value={value}>
@@ -115,6 +125,7 @@ export function useOfflineIds(): OfflineIdsContextValue {
     return {
       offlineIds: new Set(),
       addOfflineId: () => {},
+      removeOfflineId: () => {},
     };
   }
   return ctx;

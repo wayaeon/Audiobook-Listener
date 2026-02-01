@@ -1,17 +1,46 @@
 import { listAllKeys, isR2Configured, getPresignedUrl, type R2Object } from './r2';
 import { isOneDriveConfigured, buildOneDriveCatalog, getOneDriveStreamUrl } from './onedrive';
-import { loadSidecarMetadataFromKeys } from './metadata';
+import { loadSidecarMetadataFromKeys, type AtGlance } from './metadata';
 import { getCachedCatalog, setCachedCatalog } from './catalogServerCache';
 
 export type AudiobookEntry = {
   id: string;
   title: string;
   author: string;
+  /** From metadata.json; empty if not present */
+  description?: string;
+  /** Duration in seconds; from metadata.json or 0 */
+  duration?: number;
+  /** From metadata.json */
+  series?: string;
+  /** From metadata.json */
+  genre?: string;
+  /** 1–2 line curator note */
+  curatorNote?: string;
+  /** Curated section IDs (e.g. recommended-starting-points) */
+  sections?: string[];
+  /** Intellectual dimension tags (e.g. big-ideas, practical) */
+  tags?: string[];
+  /** Reading path guidance for series */
+  seriesNote?: string;
   sourceFileCount: number;
   sourceFileKeys: string[];
   chapters: { index: number; title: string; startTime: number; endTime: number }[];
   /** R2 key for cover image if sidecar exists */
   coverKey?: string;
+  /** When the audiobook was last modified in storage (for "Recent addition" badge) */
+  addedAt?: string;
+  narrator?: string;
+  authorBio?: string;
+  narratorBio?: string;
+  /** "Why people listen" – max 3 bullets */
+  whyListen?: string[];
+  atGlance?: AtGlance;
+  publisher?: string;
+  releaseYear?: string;
+  language?: string;
+  fileSizeBytes?: number;
+  isbn?: string;
 };
 
 function toStableId(s: string): string {
@@ -49,6 +78,12 @@ export async function buildCatalogFromR2(): Promise<AudiobookEntry[]> {
     const name = folder.split('/').pop() ?? folder;
     const folderPrefix = `${folder}/`;
     const keysInFolder = allKeys.filter((o) => o.key.startsWith(folderPrefix)).map((o) => o.key);
+    const audioObjs = audioKeys.filter((o) => o.key.startsWith(folderPrefix));
+    const latestMod = audioObjs.reduce<Date | null>((acc, o) => {
+      const d = o.lastModified;
+      if (!d) return acc;
+      return !acc || d > acc ? d : acc;
+    }, null);
     const entry: AudiobookEntry = {
       id: toStableId(folder),
       title: name,
@@ -56,6 +91,7 @@ export async function buildCatalogFromR2(): Promise<AudiobookEntry[]> {
       sourceFileCount: sorted.length,
       sourceFileKeys: sorted,
       chapters: [],
+      addedAt: latestMod?.toISOString(),
     };
     catalog.push(entry);
     entriesToEnrich.push({ entry, keysInFolder });
@@ -73,6 +109,7 @@ export async function buildCatalogFromR2(): Promise<AudiobookEntry[]> {
       sourceFileCount: 1,
       sourceFileKeys: [obj.key],
       chapters: [],
+      addedAt: obj.lastModified?.toISOString(),
     };
     catalog.push(entry);
     if (keysInFolder.length) entriesToEnrich.push({ entry, keysInFolder });
@@ -93,8 +130,26 @@ export async function buildCatalogFromR2(): Promise<AudiobookEntry[]> {
       const sidecar = sidecarResults[i];
       if (sidecar?.title) entry.title = sidecar.title;
       if (sidecar?.author) entry.author = sidecar.author;
+      if (sidecar?.description != null) entry.description = sidecar.description;
+      if (sidecar?.duration != null && sidecar.duration >= 0) entry.duration = sidecar.duration;
+      if (sidecar?.series != null) entry.series = sidecar.series;
+      if (sidecar?.genre != null) entry.genre = sidecar.genre;
+      if (sidecar?.curatorNote != null) entry.curatorNote = sidecar.curatorNote;
+      if (sidecar?.sections?.length) entry.sections = sidecar.sections;
+      if (sidecar?.tags?.length) entry.tags = sidecar.tags;
+      if (sidecar?.seriesNote != null) entry.seriesNote = sidecar.seriesNote;
       if (sidecar?.chapters?.length) entry.chapters = sidecar.chapters;
       if (sidecar?.coverKey) entry.coverKey = sidecar.coverKey;
+      if (sidecar?.narrator != null) entry.narrator = sidecar.narrator;
+      if (sidecar?.authorBio != null) entry.authorBio = sidecar.authorBio;
+      if (sidecar?.narratorBio != null) entry.narratorBio = sidecar.narratorBio;
+      if (sidecar?.whyListen?.length) entry.whyListen = sidecar.whyListen;
+      if (sidecar?.atGlance != null) entry.atGlance = sidecar.atGlance;
+      if (sidecar?.publisher != null) entry.publisher = sidecar.publisher;
+      if (sidecar?.releaseYear != null) entry.releaseYear = sidecar.releaseYear;
+      if (sidecar?.language != null) entry.language = sidecar.language;
+      if (sidecar?.fileSizeBytes != null) entry.fileSizeBytes = sidecar.fileSizeBytes;
+      if (sidecar?.isbn != null) entry.isbn = sidecar.isbn;
     }
   } catch {
     /* keep defaults */

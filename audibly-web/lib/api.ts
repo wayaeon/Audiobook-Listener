@@ -1,16 +1,36 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? '';
 
+export type AtGlanceDto = { tone?: string; pace?: string; world?: string; audience?: string };
+
 export type AudiobookDto = {
   id: string;
   title: string;
   author: string;
   description?: string;
   duration: number;
+  series?: string;
+  genre?: string;
+  curatorNote?: string;
+  sections?: string[];
+  tags?: string[];
+  seriesNote?: string;
   coverUrl?: string;
+  /** ISO date when added (for "Recent addition" badge) */
+  addedAt?: string;
   thumbnailUrl?: string;
   sourceFileCount: number;
   sourceFileIds: string[];
   chapters: { index: number; title: string; startTime: number; endTime: number }[];
+  narrator?: string;
+  authorBio?: string;
+  narratorBio?: string;
+  whyListen?: string[];
+  atGlance?: AtGlanceDto;
+  publisher?: string;
+  releaseYear?: string;
+  language?: string;
+  fileSizeBytes?: number;
+  isbn?: string;
 };
 
 export type StreamUrlDto = {
@@ -69,9 +89,25 @@ export type MetadataDto = {
   author: string;
   description: string | null;
   duration: number;
+  series?: string | null;
+  genre?: string | null;
+  curatorNote?: string | null;
+  sections?: string[] | null;
+  tags?: string[] | null;
+  seriesNote?: string | null;
   /** Data URL for cover (embedded or sidecar). Use as img src. */
   coverDataUrl: string | null;
   chapters: { index: number; title: string; startTime: number; endTime: number }[];
+  narrator?: string | null;
+  authorBio?: string | null;
+  narratorBio?: string | null;
+  whyListen?: string[] | null;
+  atGlance?: AtGlanceDto | null;
+  publisher?: string | null;
+  releaseYear?: string | null;
+  language?: string | null;
+  fileSizeBytes?: number | null;
+  isbn?: string | null;
 };
 
 export async function getMetadata(id: string, accessToken: string): Promise<MetadataDto> {
@@ -112,18 +148,26 @@ export async function getCoverBlobUrl(id: string, accessToken: string): Promise<
   return URL.createObjectURL(blob);
 }
 
-/** Fetch presigned cover URLs for multiple books in one request. Returns map of id -> url. */
+const COVER_BATCH_SIZE = 50;
+
+/** Fetch presigned cover URLs for multiple books. Batches into requests of 50 to respect API limit. */
 export async function getBatchCoverUrls(
   ids: string[],
   accessToken: string
 ): Promise<Record<string, string>> {
   if (ids.length === 0) return {};
   const base = typeof window !== 'undefined' ? '' : API_URL;
-  const res = await fetch(`${base}/api/audiobooks/covers?ids=${ids.map(encodeURIComponent).join(',')}`, {
-    headers: { Authorization: `Bearer ${accessToken}` },
-  });
-  if (!res.ok) return {};
-  return res.json();
+  const result: Record<string, string> = {};
+  for (let i = 0; i < ids.length; i += COVER_BATCH_SIZE) {
+    const chunk = ids.slice(i, i + COVER_BATCH_SIZE);
+    const res = await fetch(`${base}/api/audiobooks/covers?ids=${chunk.map(encodeURIComponent).join(',')}`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+    if (!res.ok) continue;
+    const chunkResult = (await res.json()) as Record<string, string>;
+    Object.assign(result, chunkResult);
+  }
+  return result;
 }
 
 /** Fetch stream URL (token-in-URL or OneDrive) and return as Blob for offline storage. */
@@ -131,4 +175,31 @@ export async function fetchStreamAsBlob(url: string): Promise<Blob> {
   const res = await fetch(url);
   if (!res.ok) throw new Error(`Download failed: ${res.status}`);
   return res.blob();
+}
+
+/**
+ * Fetch stream and report progress. onProgress(loaded, total) where total may be 0 if unknown.
+ * Blobs are stored in IndexedDB and are only playable through the app (object URLs in our player).
+ */
+export async function fetchStreamAsBlobWithProgress(
+  url: string,
+  onProgress: (loaded: number, total: number) => void
+): Promise<Blob> {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Download failed: ${res.status}`);
+  const total = res.headers.has('content-length') ? parseInt(res.headers.get('content-length')!, 10) : 0;
+  if (!res.body) return res.blob();
+  const reader = res.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let loaded = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    chunks.push(value);
+    loaded += value.length;
+    onProgress(loaded, total || 0);
+  }
+  const blob = new Blob(chunks);
+  onProgress(blob.size, blob.size);
+  return blob;
 }

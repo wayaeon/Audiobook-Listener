@@ -97,10 +97,10 @@ export default function ShelfPage() {
           <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>📚</div>
           <h2 style={{ color: 'var(--text)', marginBottom: '0.5rem' }}>Your shelf is empty</h2>
           <p style={{ color: 'var(--text-secondary)', marginBottom: '1rem' }}>
-            Download audiobooks from the Library to add them here
+            Download audiobooks from the catalog to add them here
           </p>
           <Link
-            href="/library"
+            href="/browse"
             style={{
               display: 'inline-block',
               padding: '10px 20px',
@@ -111,7 +111,7 @@ export default function ShelfPage() {
               fontWeight: 600,
             }}
           >
-            Go to Library
+            Browse catalog
           </Link>
         </div>
       )}

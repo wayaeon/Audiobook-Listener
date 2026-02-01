@@ -349,15 +349,13 @@ export default function ProfilePage() {
                     }}
                   >
                     <div
+                      className={isEmpty ? '' : 'profile-stat-value'}
                       style={{
                         fontSize: '2.25rem',
                         fontWeight: 700,
                         marginBottom: '4px',
-                        background: isEmpty ? 'none' : 'var(--accent-gradient)',
+                        background: isEmpty ? 'none' : undefined,
                         color: isEmpty ? 'var(--text-secondary)' : undefined,
-                        WebkitBackgroundClip: isEmpty ? 'unset' : 'text',
-                        WebkitTextFillColor: isEmpty ? undefined : 'transparent',
-                        backgroundClip: isEmpty ? 'unset' : 'text',
                       }}
                     >
                       {isEmpty ? '—' : stat.value}

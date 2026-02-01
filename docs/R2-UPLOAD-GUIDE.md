@@ -111,18 +111,36 @@ Replace `D:\Audiobooks` with the path to the folder that contains your .m4b / .m
 
 To get **cover art**, **chapters**, and **title/author** in the web app without parsing every file, you can add sidecar files in each audiobook folder:
 
-- **`metadata.json`** — title, author, and chapter list (times in **seconds**):
+- **`metadata.json`** (or `Metadata.json`, `book.json`, `info.json`) — title, author, description, duration, and chapter list (times in **seconds**):
 
 ```json
 {
   "title": "Book Title",
   "author": "Author Name",
+  "description": "Optional full book description for the details page.",
+  "duration": 50400,
+  "series": "Series Name",
+  "genre": "Fiction",
+  "curatorNote": "This reframed how I think about incentives.",
+  "sections": ["recommended-starting-points", "foundational-works"],
+  "tags": ["big-ideas", "practical"],
+  "seriesNote": "Read books 1-3, skip 4. This gets good after book 2.",
   "chapters": [
     { "index": 0, "title": "Chapter 1", "startTime": 0, "endTime": 3600 },
     { "index": 1, "title": "Chapter 2", "startTime": 3600, "endTime": 7200 }
   ]
 }
 ```
+
+  - `title`, `author`, `chapters` are used for display and navigation.
+  - `description` (optional) is shown on the audiobook details page.
+  - `duration` (optional) is total length in seconds; if omitted and `chapters` exist, it is derived from the last chapter's `endTime`.
+  - `series` (optional) is the series name (e.g. "Harry Potter", "Book 1").
+  - `genre` (optional) is the genre (e.g. "Fiction", "Self-Help").
+  - `curatorNote` (optional) is a 1–2 line personal note shown on cards and the details page (e.g. "Dense, but worth it.").
+  - `sections` (optional) is an array of curated section IDs. Canonical values: `recommended-starting-points`, `foundational-works`, `if-you-only-read-one`, `personal-favorites`. Books appear in those Browse carousels.
+  - `tags` (optional) is an array of intellectual dimension tags. Canonical values: `big-ideas`, `contrarian`, `practical`, `historical`, `speculative`, `systems-level`. Used for "Ways of thinking" filters.
+  - `seriesNote` (optional) is reading path guidance when the book is part of a series (e.g. "Read books 1-3, skip 4. This gets good after book 2.").
 
 - **`cover.jpg`** or **`cover.png`** — cover image (e.g. extracted from the .m4b or custom art).
 

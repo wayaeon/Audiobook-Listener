@@ -37,7 +37,7 @@ export async function GET(request: Request) {
       const folderPrefix = firstKey.includes('/') ? firstKey.slice(0, firstKey.lastIndexOf('/') + 1) : '';
       if (!folderPrefix) return;
       const keys = await listKeysWithPrefix(folderPrefix);
-      const coverKey = keys.find((k) => COVER_NAMES.some((n) => k.endsWith(n)));
+      const coverKey = keys.find((k) => COVER_NAMES.some((n) => k.toLowerCase().endsWith(n.toLowerCase())));
       if (!coverKey) return;
       const url = await getPresignedUrl(coverKey, 3600);
       if (url) result[id] = url;

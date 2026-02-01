@@ -92,9 +92,15 @@ create table if not exists public.user_audiobook_progress (
   current_position_ticks bigint not null default 0,
   current_file_index int not null default 0,
   playback_speed double precision not null default 1.0,
+  started_at timestamptz,
+  finished_at timestamptz,
   updated_at timestamptz not null default now(),
   unique(user_id, audiobook_id)
 );
+
+-- Add started_at / finished_at if table already existed
+alter table public.user_audiobook_progress add column if not exists started_at timestamptz;
+alter table public.user_audiobook_progress add column if not exists finished_at timestamptz;
 
 -- RLS: users can only read/write their own progress
 alter table public.user_audiobook_progress enable row level security;

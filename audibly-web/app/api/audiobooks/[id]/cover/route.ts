@@ -39,7 +39,7 @@ export async function GET(
   const folderPrefix = firstKey.includes('/') ? firstKey.slice(0, firstKey.lastIndexOf('/') + 1) : '';
   if (!folderPrefix) return NextResponse.json({ error: 'No cover' }, { status: 404 });
   const keys = await listKeysWithPrefix(folderPrefix);
-  const coverKey = keys.find((k) => COVER_NAMES.some((n) => k.endsWith(n)));
+  const coverKey = keys.find((k) => COVER_NAMES.some((n) => k.toLowerCase().endsWith(n.toLowerCase())));
 
   if (!coverKey) return NextResponse.json({ error: 'No cover' }, { status: 404 });
 

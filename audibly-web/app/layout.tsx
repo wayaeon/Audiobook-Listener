@@ -8,6 +8,7 @@ import { TopBar } from './components/TopBar';
 import { MiniPlayer } from './components/MiniPlayer';
 import { MainWithMiniPlayerSpacer } from './components/MainWithMiniPlayerSpacer';
 import { CatalogProvider } from '@/lib/catalogCache';
+import { FilterProvider } from '@/lib/FilterContext';
 import { PlayerProvider } from '@/lib/PlayerContext';
 import { AuthProvider } from '@/lib/AuthContext';
 import { OfflineIdsProvider } from '@/lib/OfflineIdsContext';
@@ -43,10 +44,12 @@ export default function RootLayout({
               <OfflineIdsProvider>
                 <PlayerProvider>
                 <OnboardingGuard>
-                  <MainWithMiniPlayerSpacer>
-                    <TopBar />
-                    {children}
-                  </MainWithMiniPlayerSpacer>
+                  <FilterProvider>
+                    <MainWithMiniPlayerSpacer>
+                      <TopBar />
+                      {children}
+                    </MainWithMiniPlayerSpacer>
+                  </FilterProvider>
                 </OnboardingGuard>
                 <MiniPlayer />
                 <BottomNav />

@@ -1,3 +1,4 @@
+/** Offline storage: blobs in IndexedDB. Stored on the user's device but only playable through the app (object URLs in our player, not exposed as files). */
 const DB_NAME = 'audibly-offline';
 const DB_VERSION = 1;
 const STORE_NAME = 'audiobooks';

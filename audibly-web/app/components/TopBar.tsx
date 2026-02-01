@@ -1,22 +1,28 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
 import { useCatalog } from '@/lib/catalogCache';
 import { displayTitle } from '@/lib/displayTitle';
+import { useFilter } from '@/lib/FilterContext';
 
 export function TopBar() {
   const pathname = usePathname();
   const { catalog: audiobooks, loading, needsAuth } = useCatalog();
+  const filter = useFilter();
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const router = useRouter();
 
-  const filteredBooks = searchQuery.trim()
+  const q = searchQuery.trim().toLowerCase();
+  const filteredBooks = q
     ? audiobooks.filter(
         (book) =>
-          book.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          book.author?.toLowerCase().includes(searchQuery.toLowerCase())
+          (book.title || '').toLowerCase().includes(q) ||
+          (book.author || '').toLowerCase().includes(q) ||
+          (book.series || '').toLowerCase().includes(q) ||
+          (book.genre || '').toLowerCase().includes(q)
       )
     : [];
 
@@ -41,13 +47,35 @@ export function TopBar() {
     return null;
   }
 
+  const showFilter = pathname === '/browse' && filter?.showFilterButton;
+  const showBack = pathname?.startsWith('/audiobook/');
+
   return (
     <>
       <div className="top-bar">
+        {showFilter ? (
+          <button
+            type="button"
+            onClick={filter!.openFilter}
+            className={`top-bar-btn top-bar-filter-btn ${(filter?.activeFilterCount ?? 0) > 0 ? 'top-bar-filter-btn-active' : ''}`}
+            aria-label="Filter"
+          >
+            <FilterIcon />
+            {(filter?.activeFilterCount ?? 0) > 0 && (
+              <span className="top-bar-filter-badge">{filter!.activeFilterCount}</span>
+            )}
+          </button>
+        ) : showBack ? (
+          <Link href="/browse" className="top-bar-btn" aria-label="Back to Browse">
+            <BackIcon />
+          </Link>
+        ) : (
+          <div className="top-bar-spacer" />
+        )}
         <button
           type="button"
           onClick={() => handleSearchOpen(true)}
-          className="top-bar-search-btn"
+          className="top-bar-btn top-bar-search-btn"
           aria-label="Search audiobooks"
         >
           <SearchIcon />
@@ -69,7 +97,7 @@ export function TopBar() {
             <div className="search-overlay-header">
               <input
                 type="search"
-                placeholder="Search by title or author..."
+                placeholder="Search by title, author, series, or genre..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 autoFocus
@@ -124,6 +152,22 @@ export function TopBar() {
         </div>
       )}
     </>
+  );
+}
+
+function BackIcon() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="20" height="20">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M19 12H5M12 19l-7-7 7-7" />
+    </svg>
+  );
+}
+
+function FilterIcon() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" width="24" height="24">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 3c2.755 0 5.455.232 8.083.678.533.09.917.556.917 1.096v1.044a2.25 2.25 0 01-.659 1.591l-5.432 5.432a2.25 2.25 0 00-.659 1.591v2.927a2.25 2.25 0 01-1.244 2.013L9.75 21v-6.568a2.25 2.25 0 00-.659-1.591L3.659 7.409A2.25 2.25 0 013 5.818V4.774c0-.54.384-1.006.917-1.096A48.32 48.32 0 0112 3z" />
+    </svg>
   );
 }
 
